@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# 检查参数
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <image_list_file>"
+    echo "Example: $0 images.txt"
+    exit 1
+fi
+
+IMAGE_FILE="$1"
+
+# 检查文件是否存在
+if [ ! -f "$IMAGE_FILE" ]; then
+    echo "Error: File $IMAGE_FILE not found!"
+    exit 1
+fi
+
+while IFS= read -r image || [ -n "$image" ]; do
+    # 跳过空行和注释行
+    if [[ -z "$image" || "$image" =~ ^[[:space:]]*# ]]; then
+        continue
+    fi
+
+    # 清理镜像名中的空格
+    image=$(echo "$image" | xargs)
+
+    echo "处理镜像: $image"
+
+    echo "  --------------------------------"
+done < "$IMAGE_FILE"
