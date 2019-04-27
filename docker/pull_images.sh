@@ -26,5 +26,11 @@ while IFS= read -r image || [ -n "$image" ]; do
 
     echo "处理镜像: $image"
 
+    if docker pull "$image"; then
+      echo "  ✓ 拉取成功"
+    else
+        echo "  ✗ 拉取失败"
+    fi
+
     echo "  --------------------------------"
 done < "$IMAGE_FILE"
