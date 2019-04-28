@@ -15,6 +15,19 @@ if [ ! -f "$IMAGE_FILE" ]; then
     exit 1
 fi
 
+# 检测是否需要 sudo
+DOCKER_CMD="docker"
+if ! docker info >/dev/null 2>&1; then
+    if sudo docker info >/dev/null 2>&1; then
+        DOCKER_CMD="sudo docker"
+    else
+        echo "错误: 无法连接到 Docker daemon，请检查 Docker 是否正在运行"
+        exit 1
+    fi
+fi
+
+echo "================================"
+
 while IFS= read -r image || [ -n "$image" ]; do
     # 跳过空行和注释行
     if [[ -z "$image" || "$image" =~ ^[[:space:]]*# ]]; then
