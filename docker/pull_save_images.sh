@@ -8,6 +8,10 @@ if [ "$#" -ne 1 ]; then
 fi
 
 IMAGE_FILE="$1"
+OUTPUT_DIR="./docker-images"
+
+# 创建输出目录
+mkdir -p "$OUTPUT_DIR"
 
 # 检查文件是否存在
 if [ ! -f "$IMAGE_FILE" ]; then
@@ -26,6 +30,8 @@ if ! docker info >/dev/null 2>&1; then
     fi
 fi
 
+echo "镜像列表文件: $IMAGE_FILE"
+echo "输出目录: $OUTPUT_DIR"
 echo "================================"
 
 while IFS= read -r image || [ -n "$image" ]; do
@@ -39,7 +45,7 @@ while IFS= read -r image || [ -n "$image" ]; do
 
     echo "处理镜像: $image"
 
-    if docker pull "$image"; then
+    if $DOCKER_CMD pull "$image"; then
       echo "  ✓ 拉取成功"
 
       # 生成文件名（替换特殊字符）
@@ -48,7 +54,7 @@ while IFS= read -r image || [ -n "$image" ]; do
 
       # 保存为 tar 文件
       echo "  正在保存为 tar 文件: $tar_file"
-      if docker save -o "$tar_file" "$image"; then
+      if $DOCKER_CMD save -o "$tar_file" "$image"; then
           echo "  ✓ 保存成功: $tar_file"
 
           # 显示文件大小
