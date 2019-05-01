@@ -45,26 +45,20 @@ while IFS= read -r image || [ -n "$image" ]; do
 
     echo "处理镜像: $image"
 
-    if $DOCKER_CMD pull "$image"; then
-        echo "  ✓ 拉取成功"
+    # 生成文件名（替换特殊字符）
+    filename=$(echo "$image" | sed 's|/|_|g' | sed 's|:|_|g')
+    tar_file="$OUTPUT_DIR/${filename}.tar"
 
-        # 生成文件名（替换特殊字符）
-        filename=$(echo "$image" | sed 's|/|_|g' | sed 's|:|_|g')
-        tar_file="$OUTPUT_DIR/${filename}.tar"
+    # 保存为 tar 文件
+    echo "  正在保存为 tar 文件: $tar_file"
+    if $DOCKER_CMD save -o "$tar_file" "$image"; then
+        echo "  ✓ 保存成功: $tar_file"
 
-        # 保存为 tar 文件
-        echo "  正在保存为 tar 文件: $tar_file"
-        if $DOCKER_CMD save -o "$tar_file" "$image"; then
-            echo "  ✓ 保存成功: $tar_file"
-
-            # 显示文件大小
-            size=$(ls -lh "$tar_file" | awk '{print $5}')
-            echo "  文件大小: $size"
-        else
-            echo "  ✗ 保存失败"
-        fi
+        # 显示文件大小
+        size=$(ls -lh "$tar_file" | awk '{print $5}')
+        echo "  文件大小: $size"
     else
-        echo "  ✗ 拉取失败"
+        echo "  ✗ 保存失败"
     fi
 
     echo "  --------------------------------"
