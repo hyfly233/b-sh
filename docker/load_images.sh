@@ -19,17 +19,13 @@ fi
 DOCKER_CMD="docker"
 if ! docker info >/dev/null 2>&1; then
     if sudo docker info >/dev/null 2>&1; then
-        echo "检测到需要 sudo 权限运行 Docker"
         DOCKER_CMD="sudo docker"
     else
         echo "错误: 无法连接到 Docker daemon，请检查 Docker 是否正在运行"
         exit 1
     fi
-else
-    echo "检测到可以直接运行 Docker"
 fi
 
-echo "使用命令: $DOCKER_CMD"
 echo "================================"
 
 # 计数器
