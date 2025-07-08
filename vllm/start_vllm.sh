@@ -17,6 +17,7 @@ DEFAULT_DTYPE="auto"
 DEFAULT_PP_SIZE="1"
 DEFAULT_TP_SIZE="1"
 DEFAULT_TOOL_CALL_PARSER="hermes"
+DEFAULT_ENABLE_TOOL_CALL="true"
 
 # 信号处理
 trap 'echo "Received SIGTERM, shutting down gracefully..."; exit 0' SIGTERM
@@ -40,6 +41,7 @@ Options:
     --tp-size SIZE              Tensor parallel size (default: $DEFAULT_TP_SIZE)
     --chat-template PATH        Chat template path (default: NULL)
     --tool-call-parser PARSER   Tool call parser (default: $DEFAULT_TOOL_CALL_PARSER)
+    --enable-tool-call BOOL    Enable tool call (default: $DEFAULT_ENABLE_TOOL_CALL)
     -h, --help                  Show this help message
 
 Environment Variables:
@@ -55,6 +57,7 @@ Environment Variables:
     VLLM_TP_SIZE                Tensor parallel size
     VLLM_CHAT_TEMPLATE          Chat template path
     VLLM_TOOL_CALL_PARSER       Tool call parser
+    VLLM_ENABLE_TOOL_CALL       Enable tool call
 
 Priority (highest to lowest):
     1. Command line arguments
@@ -164,6 +167,14 @@ parse_args() {
                 TOOL_CALL_PARSER="$2"
                 shift 2
                 ;;
+            --enable-tool-call)
+                if [[ -z "$2" ]]; then
+                    echo "Error: --enable-tool-call requires a value (true/false)"
+                    exit 1
+                fi
+                ENABLE_TOOL_CALL="$2"
+                shift 2
+                ;;
             -h|--help)
                 usage
                 exit 0
@@ -189,6 +200,8 @@ set_variables() {
     PP_SIZE=${PP_SIZE:-${VLLM_PP_SIZE:-$DEFAULT_PP_SIZE}}
     TP_SIZE=${TP_SIZE:-${VLLM_TP_SIZE:-$DEFAULT_TP_SIZE}}
     CHAT_TEMPLATE=${CHAT_TEMPLATE:-${VLLM_CHAT_TEMPLATE:-$DEFAULT_CHAT_TEMPLATE}}
+    TOOL_CALL_PARSER=${TOOL_CALL_PARSER:-${VLLM_TOOL_CALL_PARSER:-$DEFAULT_TOOL_CALL_PARSER}}
+    ENABLE_TOOL_CALL=${ENABLE_TOOL_CALL:-${VLLM_ENABLE_TOOL_CALL:-$DEFAULT_ENABLE_TOOL_CALL}}
 }
 
 # 验证参数
@@ -247,11 +260,14 @@ print_config() {
     echo "Port: $PORT"
     echo "Model Name: $MODEL_NAME"
     echo "Model Path: $MODEL_PATH"
+    echo "Max Number of Sequences: $MAX_NUM_SEQS"
     echo "Max Model Length: $MAX_MODEL_LEN"
     echo "Data Type: $DTYPE"
     echo "Pipeline Parallel Size: $PP_SIZE"
     echo "Tensor Parallel Size: $TP_SIZE"
     echo "Chat Template: $CHAT_TEMPLATE"
+    echo "Enable Tool Call: $ENABLE_TOOL_CALL"
+    echo "Tool Call Parser: $TOOL_CALL_PARSER"
     echo "API Key: ${API_KEY:0:10}..."
     echo "=========================="
 }
@@ -275,11 +291,10 @@ main() {
 
     echo "Launching VLLM..."
     # 启动命令
-    exec python3 -m vllm.entrypoints.openai.api_server \
+    VLLM_CMD=(python3 -m vllm.entrypoints.openai.api_server \
         --host "$HOST" \
         --port "$PORT" \
         --uvicorn-log-level warning \
-        --chat-template "$CHAT_TEMPLATE" \
         --served-model-name "$MODEL_NAME" \
         --enforce-eager \
         --model "$MODEL_PATH" \
@@ -288,10 +303,19 @@ main() {
         --api-key "$API_KEY" \
         --dtype "$DTYPE" \
         --pipeline-parallel-size "$PP_SIZE" \
-        --tensor-parallel-size "$TP_SIZE" \
-        --trust-remote-code \
-        --enable-auto-tool-choice \
-        --tool-call-parser "$TOOL_CALL_PARSER"
+        --tensor-parallel-size "$TP_SIZE")
+
+    # 仅在 CHAT_TEMPLATE 有值时添加 --chat-template
+    if [[ -n "$CHAT_TEMPLATE" ]]; then
+        VLLM_CMD+=(--chat-template "$CHAT_TEMPLATE")
+    fi
+
+    # 工具调用相关参数
+    if [[ "$ENABLE_TOOL_CALL" == "true" ]]; then
+        VLLM_CMD+=(--trust-remote-code --enable-auto-tool-choice --tool-call-parser "$TOOL_CALL_PARSER")
+    fi
+
+    exec "${VLLM_CMD[@]}"
 }
 
 # 执行主函数
