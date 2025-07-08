@@ -16,8 +16,8 @@ DEFAULT_API_KEY="sk-xxxxxxxxxxxxxx"
 DEFAULT_DTYPE="auto"
 DEFAULT_PP_SIZE="1"
 DEFAULT_TP_SIZE="1"
-DEFAULT_TOOL_CALL_PARSER="hermes"
 DEFAULT_ENABLE_TOOL_CALL="true"
+DEFAULT_TOOL_CALL_PARSER="hermes"
 
 # 信号处理
 trap 'echo "Received SIGTERM, shutting down gracefully..."; exit 0' SIGTERM
@@ -40,8 +40,8 @@ Options:
     --pp-size SIZE              Pipeline parallel size (default: $DEFAULT_PP_SIZE)
     --tp-size SIZE              Tensor parallel size (default: $DEFAULT_TP_SIZE)
     --chat-template PATH        Chat template path (default: NULL)
-    --tool-call-parser PARSER   Tool call parser (default: $DEFAULT_TOOL_CALL_PARSER)
     --enable-tool-call BOOL    Enable tool call (default: $DEFAULT_ENABLE_TOOL_CALL)
+    --tool-call-parser PARSER   Tool call parser (default: $DEFAULT_TOOL_CALL_PARSER)
     -h, --help                  Show this help message
 
 Environment Variables:
@@ -56,8 +56,8 @@ Environment Variables:
     VLLM_PP_SIZE                Pipeline parallel size
     VLLM_TP_SIZE                Tensor parallel size
     VLLM_CHAT_TEMPLATE          Chat template path
-    VLLM_TOOL_CALL_PARSER       Tool call parser
     VLLM_ENABLE_TOOL_CALL       Enable tool call
+    VLLM_TOOL_CALL_PARSER       Tool call parser
 
 Priority (highest to lowest):
     1. Command line arguments
