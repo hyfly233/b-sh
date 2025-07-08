@@ -10,12 +10,13 @@ DEFAULT_HOST="0.0.0.0"
 DEFAULT_PORT="23333"
 DEFAULT_MODEL_NAME="Qwen3-32B"
 DEFAULT_MODEL_PATH="/models/Qwen3-32B"
+DEFAULT_MAX_NUM_SEQS="256"
 DEFAULT_MAX_MODEL_LEN="12288"
 DEFAULT_API_KEY="sk-xxxxxxxxxxxxxx"
 DEFAULT_DTYPE="auto"
 DEFAULT_PP_SIZE="1"
 DEFAULT_TP_SIZE="1"
-DEFAULT_CHAT_TEMPLATE="/chat_template/qwen3_nonthinking.jinja"
+DEFAULT_TOOL_CALL_PARSER="hermes"
 
 # 信号处理
 trap 'echo "Received SIGTERM, shutting down gracefully..."; exit 0' SIGTERM
@@ -31,12 +32,14 @@ Options:
     --port PORT                 Server port (default: $DEFAULT_PORT)
     --model-name NAME           Served model name (default: $DEFAULT_MODEL_NAME)
     --model-path PATH           Model path (default: $DEFAULT_MODEL_PATH)
+    --max-num-seqs NUM          Max number of sequences (default: $DEFAULT_MAX_NUM_SEQS)
     --max-model-len LEN         Max model length (default: $DEFAULT_MAX_MODEL_LEN)
     --api-key KEY               API key (default: from env or $DEFAULT_API_KEY)
     --dtype TYPE                Data type (default: $DEFAULT_DTYPE)
     --pp-size SIZE              Pipeline parallel size (default: $DEFAULT_PP_SIZE)
     --tp-size SIZE              Tensor parallel size (default: $DEFAULT_TP_SIZE)
-    --chat-template PATH        Chat template path (default: $DEFAULT_CHAT_TEMPLATE)
+    --chat-template PATH        Chat template path (default: NULL)
+    --tool-call-parser PARSER   Tool call parser (default: $DEFAULT_TOOL_CALL_PARSER)
     -h, --help                  Show this help message
 
 Environment Variables:
@@ -44,12 +47,14 @@ Environment Variables:
     VLLM_PORT                   Server port
     VLLM_MODEL_NAME             Served model name
     VLLM_MODEL_PATH             Model path
+    VLLM_MAX_NUM_SEQS           Max number of sequences
     VLLM_MAX_MODEL_LEN          Max model length
     VLLM_API_KEY                API key
     VLLM_DTYPE                  Data type
     VLLM_PP_SIZE                Pipeline parallel size
     VLLM_TP_SIZE                Tensor parallel size
     VLLM_CHAT_TEMPLATE          Chat template path
+    VLLM_TOOL_CALL_PARSER       Tool call parser
 
 Priority (highest to lowest):
     1. Command line arguments
@@ -93,6 +98,14 @@ parse_args() {
                     exit 1
                 fi
                 MODEL_PATH="$2"
+                shift 2
+                ;;
+            --max-num-seqs)
+                if [[ -z "$2" ]]; then
+                    echo "Error: --max-num-seqs requires a value"
+                    exit 1
+                fi
+                MAX_NUM_SEQS="$2"
                 shift 2
                 ;;
             --max-model-len)
@@ -141,6 +154,14 @@ parse_args() {
                     exit 1
                 fi
                 CHAT_TEMPLATE="$2"
+                shift 2
+                ;;
+            --tool-call-parser)
+                if [[ -z "$2" ]]; then
+                    echo "Error: --tool-call-parser requires a value"
+                    exit 1
+                fi
+                TOOL_CALL_PARSER="$2"
                 shift 2
                 ;;
             -h|--help)
@@ -262,11 +283,15 @@ main() {
         --served-model-name "$MODEL_NAME" \
         --enforce-eager \
         --model "$MODEL_PATH" \
+        --max-num-seqs "$MAX_NUM_SEQS" \
         --max-model-len "$MAX_MODEL_LEN" \
         --api-key "$API_KEY" \
         --dtype "$DTYPE" \
         --pipeline-parallel-size "$PP_SIZE" \
-        --tensor-parallel-size "$TP_SIZE"
+        --tensor-parallel-size "$TP_SIZE" \
+        --trust-remote-code \
+        --enable-auto-tool-choice \
+        --tool-call-parser "$TOOL_CALL_PARSER"
 }
 
 # 执行主函数
