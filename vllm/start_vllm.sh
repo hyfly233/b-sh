@@ -15,6 +15,7 @@ DEFAULT_API_KEY="sk-xxxxxxxxxxxxxx"
 DEFAULT_DTYPE="auto"
 DEFAULT_PP_SIZE="1"
 DEFAULT_TP_SIZE="1"
+DEFAULT_CHAT_TEMPLATE="/chat_template/qwen3_nonthinking.jinja"
 
 # 信号处理
 trap 'echo "Received SIGTERM, shutting down gracefully..."; exit 0' SIGTERM
@@ -35,6 +36,7 @@ Options:
     --dtype TYPE                Data type (default: $DEFAULT_DTYPE)
     --pp-size SIZE              Pipeline parallel size (default: $DEFAULT_PP_SIZE)
     --tp-size SIZE              Tensor parallel size (default: $DEFAULT_TP_SIZE)
+    --chat-template PATH        Chat template path (default: $DEFAULT_CHAT_TEMPLATE)
     -h, --help                  Show this help message
 
 Environment Variables:
@@ -47,6 +49,7 @@ Environment Variables:
     VLLM_DTYPE                  Data type
     VLLM_PP_SIZE                Pipeline parallel size
     VLLM_TP_SIZE                Tensor parallel size
+    VLLM_CHAT_TEMPLATE          Chat template path
 
 Priority (highest to lowest):
     1. Command line arguments
@@ -132,6 +135,14 @@ parse_args() {
                 TP_SIZE="$2"
                 shift 2
                 ;;
+            --chat-template)
+                if [[ -z "$2" ]]; then
+                    echo "Error: --chat-template requires a value"
+                    exit 1
+                fi
+                CHAT_TEMPLATE="$2"
+                shift 2
+                ;;
             -h|--help)
                 usage
                 exit 0
@@ -156,6 +167,7 @@ set_variables() {
     DTYPE=${DTYPE:-${VLLM_DTYPE:-$DEFAULT_DTYPE}}
     PP_SIZE=${PP_SIZE:-${VLLM_PP_SIZE:-$DEFAULT_PP_SIZE}}
     TP_SIZE=${TP_SIZE:-${VLLM_TP_SIZE:-$DEFAULT_TP_SIZE}}
+    CHAT_TEMPLATE=${CHAT_TEMPLATE:-${VLLM_CHAT_TEMPLATE:-$DEFAULT_CHAT_TEMPLATE}}
 }
 
 # 验证参数
@@ -199,6 +211,12 @@ validate_params() {
         echo "Error: API key cannot be empty"
         exit 1
     fi
+
+    # 检查chat template文件是否存在（如果指定了的话）
+    if [[ -n "$CHAT_TEMPLATE" && ! -f "$CHAT_TEMPLATE" ]]; then
+        echo "Warning: Chat template file $CHAT_TEMPLATE does not exist"
+        echo "vLLM will use the default chat template from the model"
+    fi
 }
 
 # 打印配置信息
@@ -212,6 +230,7 @@ print_config() {
     echo "Data Type: $DTYPE"
     echo "Pipeline Parallel Size: $PP_SIZE"
     echo "Tensor Parallel Size: $TP_SIZE"
+    echo "Chat Template: $CHAT_TEMPLATE"
     echo "API Key: ${API_KEY:0:10}..."
     echo "=========================="
 }
@@ -239,6 +258,7 @@ main() {
         --host "$HOST" \
         --port "$PORT" \
         --uvicorn-log-level warning \
+        --chat-template "$CHAT_TEMPLATE" \
         --served-model-name "$MODEL_NAME" \
         --enforce-eager \
         --model "$MODEL_PATH" \
