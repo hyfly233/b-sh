@@ -18,6 +18,7 @@ DEFAULT_PP_SIZE="1"
 DEFAULT_TP_SIZE="1"
 DEFAULT_ENABLE_TOOL_CALL="true"
 DEFAULT_TOOL_CALL_PARSER="hermes"
+DEFAULT_ENFORCE_EAGER="false"
 
 # 信号处理
 trap 'echo "Received SIGTERM, shutting down gracefully..."; exit 0' SIGTERM
@@ -42,6 +43,7 @@ Options:
     --chat-template PATH        Chat template path (default: NULL)
     --enable-tool-call BOOL    Enable tool call (default: $DEFAULT_ENABLE_TOOL_CALL)
     --tool-call-parser PARSER   Tool call parser (default: $DEFAULT_TOOL_CALL_PARSER)
+    --enforce-eager BOOL         Enable --enforce-eager (default: $DEFAULT_ENFORCE_EAGER)
     -h, --help                  Show this help message
 
 Environment Variables:
@@ -58,6 +60,7 @@ Environment Variables:
     VLLM_CHAT_TEMPLATE          Chat template path
     VLLM_ENABLE_TOOL_CALL       Enable tool call
     VLLM_TOOL_CALL_PARSER       Tool call parser
+    VLLM_ENFORCE_EAGER          Enable --enforce-eager
 
 Priority (highest to lowest):
     1. Command line arguments
@@ -175,6 +178,14 @@ parse_args() {
                 ENABLE_TOOL_CALL="$2"
                 shift 2
                 ;;
+            --enforce-eager)
+                if [[ -z "$2" ]]; then
+                    echo "Error: --enforce-eager requires a value (true/false)"
+                    exit 1
+                fi
+                ENFORCE_EAGER="$2"
+                shift 2
+                ;;
             -h|--help)
                 usage
                 exit 0
@@ -203,6 +214,7 @@ set_variables() {
     CHAT_TEMPLATE=${CHAT_TEMPLATE:-${VLLM_CHAT_TEMPLATE:-$DEFAULT_CHAT_TEMPLATE}}
     ENABLE_TOOL_CALL=${ENABLE_TOOL_CALL:-${VLLM_ENABLE_TOOL_CALL:-$DEFAULT_ENABLE_TOOL_CALL}}
     TOOL_CALL_PARSER=${TOOL_CALL_PARSER:-${VLLM_TOOL_CALL_PARSER:-$DEFAULT_TOOL_CALL_PARSER}}
+    ENFORCE_EAGER=${ENFORCE_EAGER:-${VLLM_ENFORCE_EAGER:-$DEFAULT_ENFORCE_EAGER}}
 }
 
 # 验证参数
@@ -270,6 +282,7 @@ print_config() {
     echo "Enable Tool Call: $ENABLE_TOOL_CALL"
     echo "Tool Call Parser: $TOOL_CALL_PARSER"
     echo "API Key: ${API_KEY:0:10}..."
+    echo "Enforce Eager: $ENFORCE_EAGER"
     echo "=========================="
 }
 
@@ -297,7 +310,6 @@ main() {
         --port "$PORT" \
         --uvicorn-log-level warning \
         --served-model-name "$MODEL_NAME" \
-        --enforce-eager \
         --model "$MODEL_PATH" \
         --max-num-seqs "$MAX_NUM_SEQS" \
         --max-model-len "$MAX_MODEL_LEN" \
@@ -305,6 +317,11 @@ main() {
         --dtype "$DTYPE" \
         --pipeline-parallel-size "$PP_SIZE" \
         --tensor-parallel-size "$TP_SIZE")
+
+    # 仅在 ENFORCE_EAGER 为 true 时添加 --enforce-eager
+    if [[ "$ENFORCE_EAGER" == "true" ]]; then
+        VLLM_CMD+=(--enforce-eager)
+    fi
 
     # 仅在 CHAT_TEMPLATE 有值时添加 --chat-template
     if [[ -n "$CHAT_TEMPLATE" ]]; then
